@@ -4,7 +4,57 @@ imports:
   - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
   - https://raw.githubusercontent.com/Cloudify-PS/cloudify-ioscli-plugin/master/plugin.yaml
 
+inputs:
+
+  ioscli_ip:
+    type: string
+    description: >
+       ioscli server ip
+    default: 127.0.0.1
+
+  ioscli_user:
+    type: string
+    description: >
+       ioscli server user
+    default: ioscli
+  ioscli_password:
+    type: string
+    description: >
+       ioscli server user password
+    default: ioscli
+
+  ioscli_key_content:
+    type: string
+    description: >
+       ioscli server user rsa key content, can be used instead password
+    default: ""
+
+  ioscli_port:
+    type: integer
+    description: >
+       ioscli server port, for cisco by default 22
+    default: 22
+
 node_templates:
 
   ios_impl:
     type: cloudify.ioscli.raw
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          inputs:
+            ioscli_auth:
+              user: { get_input: ioscli_user }
+              password: { get_input: ioscli_password }
+              ip: { get_input: ioscli_ip }
+              key_content: { get_input: ioscli_key_content }
+              port: { get_input: ioscli_port }
+            calls:
+              - action: show ip http server all
+              - action: show ip domain
+                save_to: domain
+
+outputs:
+  responses:
+    description: repsonses from commands
+    value: { get_attribute: [ ios_impl, domain ] }

@@ -15,29 +15,52 @@
 
 
 from cloudify import ctx
+from cloudify import exceptions as cfy_exc
 from cloudify.decorators import operation
-
-
-@operation
-def create(**kwargs):
-    ctx.logger.info("create")
-
+import ioscli_connection
 
 @operation
-def configure(**kwargs):
-    ctx.logger.info("configure")
+def run(**kwargs):
+    """main entry point for all calls"""
 
+    calls = kwargs.get('calls', [])
+    if not calls:
+        ctx.logger.info("No calls")
+        return
 
-@operation
-def start(**kwargs):
-    ctx.logger.info("start")
+    # credentials
+    properties = ctx.node.properties
+    ioscli_auth = properties.get('ioscli_auth', {})
+    ioscli_auth.update(kwargs.get('ioscli_auth', {}))
+    ip = ioscli_auth.get('ip')
+    user = ioscli_auth.get('user')
+    password = ioscli_auth.get('password')
+    key_content = ioscli_auth.get('key_content')
+    port = ioscli_auth.get('port', 22)
+    if not ip or not user or (not password and not key_content):
+        raise cfy_exc.NonRecoverableError(
+            "please check your credentials"
+        )
 
+    connection = ioscli_connection.connection()
 
-@operation
-def stop(**kwargs):
-    ctx.logger.info("stop")
+    prompt = connection.connect(ip, user, password, key_content, port)
 
+    ctx.logger.info("device prompt: " + prompt)
 
-@operation
-def delete(**kwargs):
-    ctx.logger.info("delete")
+    for call in calls:
+        operation = call.get('action', "")
+        ctx.logger.info("Execute: " + operation)
+        result = connection.run(operation)
+        ctx.logger.info("Result of execution: " + result)
+        # save results to runtime properties
+        save_to = call.get('save_to')
+        if save_to:
+            ctx.instance.runtime_properties[save_to] = result
+
+    while not connection.is_closed():
+        ctx.logger.info("Execute close")
+        result = connection.run("exit")
+        ctx.logger.info("Result of close: " + result)
+
+    connection.close()

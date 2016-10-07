@@ -16,14 +16,13 @@ from setuptools import setup
 setup(
     name='cloudify-ioscli-plugin',
     version='0.1',
-    description='support netconf',
+    description='support ioncli',
     author='Denis Pauk',
     author_email='pauk.denis@gmail.com',
     license='LICENSE',
     packages=['cloudify_ioscli'],
     install_requires=[
         'cloudify-plugins-common>=3.3',
-        'lxml',
-        'ioscli-python',
+        'paramiko',  # for ssh connection
     ],
 )
