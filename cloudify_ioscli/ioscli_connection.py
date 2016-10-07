@@ -64,9 +64,9 @@ class connection(object):
                 "We dont have prefix '%s' in response: %s" % (prefix, text)
             )
         response = text[len(prefix):].strip()
-        if response[:2] == "% ":
+        if response.find("\n% ") != -1:
             raise cfy_exc.NonRecoverableError(
-                "Looks as we have error in response: %s" % (prefix, response)
+                "Looks as we have error in response: %s" % (text)
             )
         return response
 
