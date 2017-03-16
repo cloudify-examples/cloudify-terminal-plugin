@@ -27,6 +27,14 @@ class connection(object):
     # buffer for same packages, will save partial packages between calls
     buff = ""
 
+    def _find_any_in(self, promt_check):
+        for code in promt_check:
+            position = self.buff.find(code)
+            if position != -1:
+                return position
+        # no promt codes
+        return -1
+
     def connect(self, ip, user, password=None, key_content=None, port=22,
                 prompt_check=None):
         """open connection"""
@@ -49,15 +57,15 @@ class connection(object):
         self.conn = self.ssh.invoke_shell()
         self.buff = ""
 
-        while self.buff.find("#") == -1 and self.buff.find("$") == -1:
+        while self._find_any_in(prompt_check) == -1:
             self.buff += self.conn.recv(128)
 
         self.hostname = ""
         #looks as we have some hostname
-        for code in prompt_check:
-            if self.buff.find(code) != -1:
-                self.hostname = self.buff[:self.buff.find(code)].strip()
-                self.buff = self.buff[self.buff.find(code) + 1:]
+        code_position = self._find_any_in(prompt_check)
+        if code_position != -1:
+            self.hostname = self.buff[:code_position].strip()
+            self.buff = self.buff[code_position + 1:]
         return self.hostname
 
     def __clenup_response(self, text, prefix):
@@ -88,7 +96,7 @@ class connection(object):
         message_from_server = ""
 
         while not have_prompt:
-            while self.buff.find("\n") == -1 and self.buff.find("#") == -1 and self.buff.find("$") == -1:
+            while self._find_any_in(prompt_check + ["\n"]) == -1:
                 self.buff += self.conn.recv(128)
                 if self.conn.closed:
                     return self.__clenup_response(message_from_server,
@@ -100,10 +108,11 @@ class connection(object):
                 message_from_server += line
 
             # last line without new line at the end
-            if "#" in self.buff:
+            code_position = self._find_any_in(prompt_check)
+            if code_position != -1:
                 have_prompt = True
-                self.hostname = self.buff[:self.buff.find("#")]
-                self.buff = self.buff[self.buff.find("#") + 1:]
+                self.hostname = self.buff[:code_position]
+                self.buff = self.buff[code_position + 1:]
 
             if self.conn.closed:
                 return self.__clenup_response(message_from_server,
