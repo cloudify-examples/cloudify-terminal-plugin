@@ -61,4 +61,5 @@ node_templates:
           inputs:
             terminal_auth: *terminal_auth
             calls:
+              - template: fortigate.txt
               - action: aaa

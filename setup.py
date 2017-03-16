@@ -23,6 +23,7 @@ setup(
     packages=['cloudify_terminal'],
     install_requires=[
         'cloudify-plugins-common>=3.3',
-        'paramiko',  # for ssh connection
+        'paramiko',  # for ssh netconf connection
+        "Jinja2>=2.7.2",  # for template support
     ],
 )

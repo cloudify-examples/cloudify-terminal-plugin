@@ -17,6 +17,8 @@
 from cloudify import ctx
 from cloudify import exceptions as cfy_exc
 from cloudify.decorators import operation
+from jinja2 import Template
+
 import terminal_connection
 
 
@@ -53,7 +55,23 @@ def run(**kwargs):
     ctx.logger.info("device prompt: " + prompt)
 
     for call in calls:
+        # use action if exist
         operation = call.get('action', "")
+        # use template if have
+        if not operation and 'template' in call:
+            template_name = call.get('template')
+            template_params = call.get('params')
+            template = ctx.get_resource(template_name)
+            if not template:
+                ctx.logger.info("Empty template.")
+                continue
+            template_engine = Template(template)
+            if template_params:
+                operation = template_engine.render(template_params)
+            else:
+                operation = template_engine.render({})
+        if not operation:
+            continue
         ctx.logger.info("Execute: " + operation)
         result = connection.run(operation, promt_check, error_examples)
         ctx.logger.info("Result of execution: " + result)

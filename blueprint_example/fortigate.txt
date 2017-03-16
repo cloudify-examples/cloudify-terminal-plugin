@@ -1,0 +1,4 @@
+config global
+config system interface
+end
+end
