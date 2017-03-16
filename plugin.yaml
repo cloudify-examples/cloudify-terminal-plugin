@@ -1,16 +1,16 @@
 plugins:
-  ioscli:
+  terminal:
     executor: central_deployment_agent
-    source: https://github.com/Cloudify-PS/cloudify-ioscli-plugin/archive/master.zip
-    package_name: cloudify-ioscli-plugin
+    source: https://github.com/Cloudify-PS/cloudify-terminal-plugin/archive/master.zip
+    package_name: cloudify-terminal-plugin
     package_version: '0.1'
 
 node_types:
 
-  cloudify.ioscli.raw:
+  cloudify.terminal.raw:
     derived_from: cloudify.nodes.Root
     properties:
-      ioscli_auth:
+      terminal_auth:
         # login credentials for ios server
         default:
           user: ""
@@ -22,17 +22,17 @@ node_types:
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
-          implementation: ioscli.cloudify_ioscli.tasks.run
+          implementation: terminal.cloudify_terminal.tasks.run
           inputs: {}
         configure:
-          implementation: ioscli.cloudify_ioscli.tasks.run
+          implementation: terminal.cloudify_terminal.tasks.run
           inputs: {}
         start:
-          implementation: ioscli.cloudify_ioscli.tasks.run
+          implementation: terminal.cloudify_terminal.tasks.run
           inputs: {}
         stop:
-          implementation: ioscli.cloudify_ioscli.tasks.run
+          implementation: terminal.cloudify_terminal.tasks.run
           inputs: {}
         delete:
-          implementation: ioscli.cloudify_ioscli.tasks.run
+          implementation: terminal.cloudify_terminal.tasks.run
           inputs: {}

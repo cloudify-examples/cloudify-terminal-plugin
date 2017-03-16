@@ -15,6 +15,9 @@ import paramiko
 from StringIO import StringIO
 from cloudify import exceptions as cfy_exc
 
+DEFAULT_PROMT = ["#", "$"]
+
+
 class connection(object):
 
     # ssh connection
@@ -24,10 +27,12 @@ class connection(object):
     # buffer for same packages, will save partial packages between calls
     buff = ""
 
-    def connect(
-        self, ip, user, password=None, key_content=None, port=22
-    ):
+    def connect(self, ip, user, password=None, key_content=None, port=22,
+                prompt_check=None):
         """open connection"""
+        if not prompt_check:
+            prompt_check = DEFAULT_PROMT
+
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -35,23 +40,21 @@ class connection(object):
             key = paramiko.RSAKey.from_private_key(
                 StringIO(key_content)
             )
-            self.ssh.connect(
-                ip, username=user, pkey=key, port=port, timeout=5, allow_agent=False
-            )
+            self.ssh.connect(ip, username=user, pkey=key, port=port, timeout=5,
+                             allow_agent=False)
         else:
-            self.ssh.connect(
-                ip, username=user, password=password, port=port, timeout=5, allow_agent=False, look_for_keys=False
-            )
+            self.ssh.connect(ip, username=user, password=password, port=port,
+                             timeout=5, allow_agent=False, look_for_keys=False)
 
         self.conn = self.ssh.invoke_shell()
-        buff = ""
+        self.buff = ""
 
         while self.buff.find("#") == -1 and self.buff.find("$") == -1:
             self.buff += self.conn.recv(128)
 
         self.hostname = ""
         #looks as we have some hostname
-        for code in ["#", "$"]:
+        for code in prompt_check:
             if self.buff.find(code) != -1:
                 self.hostname = self.buff[:self.buff.find(code)].strip()
                 self.buff = self.buff[self.buff.find(code) + 1:]
@@ -70,7 +73,10 @@ class connection(object):
             )
         return response
 
-    def run(self, command):
+    def run(self, command, prompt_check=None):
+        if not prompt_check:
+            prompt_check = DEFAULT_PROMT
+
         response_prefix = command.strip()
         self.conn.send(response_prefix + "\n")
 
@@ -85,21 +91,23 @@ class connection(object):
             while self.buff.find("\n") == -1 and self.buff.find("#") == -1 and self.buff.find("$") == -1:
                 self.buff += self.conn.recv(128)
                 if self.conn.closed:
-                    return self.__clenup_response(message_from_server, response_prefix)
+                    return self.__clenup_response(message_from_server,
+                                                  response_prefix)
 
             while self.buff.find("\n") != -1:
                 line = self.buff[:self.buff.find("\n") + 1]
-                self.buff = self.buff[self.buff.find("\n") + 1 :]
+                self.buff = self.buff[self.buff.find("\n") + 1:]
                 message_from_server += line
 
             # last line without new line at the end
             if "#" in self.buff:
                 have_prompt = True
                 self.hostname = self.buff[:self.buff.find("#")]
-                self.buff = self.buff[self.buff.find("#") + 1 :]
+                self.buff = self.buff[self.buff.find("#") + 1:]
 
             if self.conn.closed:
-                return self.__clenup_response(message_from_server, response_prefix)
+                return self.__clenup_response(message_from_server,
+                                              response_prefix)
 
         return self.__clenup_response(message_from_server, response_prefix)
 

@@ -2,53 +2,54 @@ tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
-  - https://raw.githubusercontent.com/Cloudify-PS/cloudify-ioscli-plugin/master/plugin.yaml
+  - ../plugin.yaml
+#  - https://raw.githubusercontent.com/Cloudify-PS/cloudify-terminal-plugin/master/plugin.yaml
 
 inputs:
 
-  ioscli_ip:
+  terminal_ip:
     type: string
     description: >
-       ioscli server ip
+       terminal server ip
     default: 127.0.0.1
 
-  ioscli_user:
+  terminal_user:
     type: string
     description: >
-       ioscli server user
-    default: ioscli
-  ioscli_password:
+       terminal server user
+    default: terminal
+  terminal_password:
     type: string
     description: >
-       ioscli server user password
-    default: ioscli
+       terminal server user password
+    default: terminal
 
-  ioscli_key_content:
+  terminal_key_content:
     type: string
     description: >
-       ioscli server user rsa key content, can be used instead password
+       terminal server user rsa key content, can be used instead password
     default: ""
 
-  ioscli_port:
+  terminal_port:
     type: integer
     description: >
-       ioscli server port, for cisco by default 22
+       terminal server port, for ssh(cisco/forigate/juniper) by default 22
     default: 22
 
 node_templates:
 
   ios_impl:
-    type: cloudify.ioscli.raw
+    type: cloudify.terminal.raw
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
           inputs:
-            ioscli_auth:
-              user: { get_input: ioscli_user }
-              password: { get_input: ioscli_password }
-              ip: { get_input: ioscli_ip }
-              key_content: { get_input: ioscli_key_content }
-              port: { get_input: ioscli_port }
+            terminal_auth:
+              user: { get_input: terminal_user }
+              password: { get_input: terminal_password }
+              ip: { get_input: terminal_ip }
+              key_content: { get_input: terminal_key_content }
+              port: { get_input: terminal_port }
             calls:
               - action: show ip http server all
               - action: show ip domain

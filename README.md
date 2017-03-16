@@ -1,4 +1,4 @@
-# cloudify-ioscli-plugin
+# cloudify-terminal-plugin
 
 Check ssh connection to IOS
 

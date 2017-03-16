@@ -17,7 +17,8 @@
 from cloudify import ctx
 from cloudify import exceptions as cfy_exc
 from cloudify.decorators import operation
-import ioscli_connection
+import terminal_connection
+
 
 @operation
 def run(**kwargs):
@@ -30,19 +31,19 @@ def run(**kwargs):
 
     # credentials
     properties = ctx.node.properties
-    ioscli_auth = properties.get('ioscli_auth', {})
-    ioscli_auth.update(kwargs.get('ioscli_auth', {}))
-    ip = ioscli_auth.get('ip')
-    user = ioscli_auth.get('user')
-    password = ioscli_auth.get('password')
-    key_content = ioscli_auth.get('key_content')
-    port = ioscli_auth.get('port', 22)
+    terminal_auth = properties.get('terminal_auth', {})
+    terminal_auth.update(kwargs.get('terminal_auth', {}))
+    ip = terminal_auth.get('ip')
+    user = terminal_auth.get('user')
+    password = terminal_auth.get('password')
+    key_content = terminal_auth.get('key_content')
+    port = terminal_auth.get('port', 22)
     if not ip or not user or (not password and not key_content):
         raise cfy_exc.NonRecoverableError(
             "please check your credentials"
         )
 
-    connection = ioscli_connection.connection()
+    connection = terminal_connection.connection()
 
     prompt = connection.connect(ip, user, password, key_content, port)
 

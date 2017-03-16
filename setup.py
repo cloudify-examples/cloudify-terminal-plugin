@@ -14,13 +14,13 @@
 from setuptools import setup
 
 setup(
-    name='cloudify-ioscli-plugin',
+    name='cloudify-terminal-plugin',
     version='0.1',
     description='support ioncli',
     author='Denis Pauk',
     author_email='pauk.denis@gmail.com',
     license='LICENSE',
-    packages=['cloudify_ioscli'],
+    packages=['cloudify_terminal'],
     install_requires=[
         'cloudify-plugins-common>=3.3',
         'paramiko',  # for ssh connection
