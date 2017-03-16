@@ -50,5 +50,8 @@ node_templates:
               ip: { get_input: terminal_ip }
               key_content: { get_input: terminal_key_content }
               port: { get_input: terminal_port }
+              promt_check:
+                - #
+                - $
             calls:
               - action: exit

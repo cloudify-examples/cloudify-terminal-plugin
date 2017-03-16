@@ -18,6 +18,7 @@ node_types:
           ip: ""
           key_content: ""
           port: 22
+          promt_check: []
 
     interfaces:
       cloudify.interfaces.lifecycle:
