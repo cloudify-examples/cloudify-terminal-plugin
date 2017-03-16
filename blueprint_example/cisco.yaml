@@ -50,6 +50,8 @@ node_templates:
               ip: { get_input: terminal_ip }
               key_content: { get_input: terminal_key_content }
               port: { get_input: terminal_port }
+              errors:
+                - "% "
             calls:
               - action: show ip http server all
               - action: show ip domain

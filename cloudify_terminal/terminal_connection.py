@@ -27,9 +27,9 @@ class connection(object):
     # buffer for same packages, will save partial packages between calls
     buff = ""
 
-    def _find_any_in(self, promt_check):
+    def __find_any_in(self, buff, promt_check):
         for code in promt_check:
-            position = self.buff.find(code)
+            position = buff.find(code)
             if position != -1:
                 return position
         # no promt codes
@@ -57,31 +57,36 @@ class connection(object):
         self.conn = self.ssh.invoke_shell()
         self.buff = ""
 
-        while self._find_any_in(prompt_check) == -1:
+        while self.__find_any_in(self.buff, prompt_check) == -1:
             self.buff += self.conn.recv(128)
 
         self.hostname = ""
         #looks as we have some hostname
-        code_position = self._find_any_in(prompt_check)
+        code_position = self.__find_any_in(self.buff, prompt_check)
         if code_position != -1:
             self.hostname = self.buff[:code_position].strip()
             self.buff = self.buff[code_position + 1:]
         return self.hostname
 
-    def __clenup_response(self, text, prefix):
+    def __clenup_response(self, text, prefix, error_examples):
+        if not error_examples:
+            return
+
         text = text.strip()
         if text[:len(prefix)] != prefix:
             raise cfy_exc.NonRecoverableError(
                 "We dont have prefix '%s' in response: %s" % (prefix, text)
             )
         response = text[len(prefix):].strip()
-        if response.find("\n% ") != -1:
+        # check for errors started only from new line
+        errors_with_new_line = ["\n " + error for error in error_examples]
+        if self.__find_any_in(response, errors_with_new_line) != -1:
             raise cfy_exc.NonRecoverableError(
                 "Looks as we have error in response: %s" % (text)
             )
         return response
 
-    def run(self, command, prompt_check=None):
+    def run(self, command, prompt_check=None, error_examples=None):
         if not prompt_check:
             prompt_check = DEFAULT_PROMT
 
@@ -96,11 +101,12 @@ class connection(object):
         message_from_server = ""
 
         while not have_prompt:
-            while self._find_any_in(prompt_check + ["\n"]) == -1:
+            while self.__find_any_in(self.buff, prompt_check + ["\n"]) == -1:
                 self.buff += self.conn.recv(128)
                 if self.conn.closed:
                     return self.__clenup_response(message_from_server,
-                                                  response_prefix)
+                                                  response_prefix,
+                                                  error_examples)
 
             while self.buff.find("\n") != -1:
                 line = self.buff[:self.buff.find("\n") + 1]
@@ -108,7 +114,7 @@ class connection(object):
                 message_from_server += line
 
             # last line without new line at the end
-            code_position = self._find_any_in(prompt_check)
+            code_position = self.__find_any_in(self.buff, prompt_check)
             if code_position != -1:
                 have_prompt = True
                 self.hostname = self.buff[:code_position]
@@ -116,9 +122,12 @@ class connection(object):
 
             if self.conn.closed:
                 return self.__clenup_response(message_from_server,
-                                              response_prefix)
+                                              response_prefix,
+                                              error_examples)
 
-        return self.__clenup_response(message_from_server, response_prefix)
+        return self.__clenup_response(message_from_server,
+                                      response_prefix,
+                                      error_examples)
 
     def is_closed(self):
         if self.conn:

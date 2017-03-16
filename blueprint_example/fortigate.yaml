@@ -51,7 +51,10 @@ node_templates:
               key_content: { get_input: terminal_key_content }
               port: { get_input: terminal_port }
               promt_check:
-                - #
-                - $
+                - '#'
+                - '$'
+              errors:
+                - "Command fail."
             calls:
               - action: exit
+              - action: aaa

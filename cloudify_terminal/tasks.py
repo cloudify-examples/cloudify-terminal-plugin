@@ -38,6 +38,7 @@ def run(**kwargs):
     password = terminal_auth.get('password')
     key_content = terminal_auth.get('key_content')
     promt_check = terminal_auth.get('promt_check')
+    error_examples = terminal_auth.get('errors')
     port = terminal_auth.get('port', 22)
     if not ip or not user or (not password and not key_content):
         raise cfy_exc.NonRecoverableError(
@@ -54,7 +55,7 @@ def run(**kwargs):
     for call in calls:
         operation = call.get('action', "")
         ctx.logger.info("Execute: " + operation)
-        result = connection.run(operation, promt_check)
+        result = connection.run(operation, promt_check, error_examples)
         ctx.logger.info("Result of execution: " + result)
         # save results to runtime properties
         save_to = call.get('save_to')
@@ -63,7 +64,7 @@ def run(**kwargs):
 
     while not connection.is_closed():
         ctx.logger.info("Execute close")
-        result = connection.run("exit", promt_check)
+        result = connection.run("exit", promt_check, error_examples)
         ctx.logger.info("Result of close: " + result)
 
     connection.close()

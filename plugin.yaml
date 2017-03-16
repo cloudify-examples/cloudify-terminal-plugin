@@ -18,7 +18,10 @@ node_types:
           ip: ""
           key_content: ""
           port: 22
+          # list of prompts accepted from device
           promt_check: []
+          # list of possible errors without new line
+          errors: []
 
     interfaces:
       cloudify.interfaces.lifecycle:
