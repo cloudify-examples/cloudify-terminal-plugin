@@ -33,12 +33,12 @@ inputs:
   terminal_port:
     type: integer
     description: >
-       terminal server port, for ssh(cisco/forigate/juniper) by default 22
+       terminal server port, for fortigate ssh by default 22
     default: 22
 
 node_templates:
 
-  ios_impl:
+  forti_impl:
     type: cloudify.terminal.raw
     interfaces:
       cloudify.interfaces.lifecycle:
@@ -51,11 +51,4 @@ node_templates:
               key_content: { get_input: terminal_key_content }
               port: { get_input: terminal_port }
             calls:
-              - action: show ip http server all
-              - action: show ip domain
-                save_to: domain
-
-outputs:
-  responses:
-    description: repsonses from commands
-    value: { get_attribute: [ ios_impl, domain ] }
+              - action: exit
