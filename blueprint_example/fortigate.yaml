@@ -44,7 +44,7 @@ node_templates:
       cloudify.interfaces.lifecycle:
         create:
           inputs:
-            terminal_auth:
+            terminal_auth: &terminal_auth
               user: { get_input: terminal_user }
               password: { get_input: terminal_password }
               ip: { get_input: terminal_ip }
@@ -57,4 +57,8 @@ node_templates:
                 - "Command fail."
             calls:
               - action: exit
+        start:
+          inputs:
+            terminal_auth: *terminal_auth
+            calls:
               - action: aaa

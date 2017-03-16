@@ -79,7 +79,7 @@ class connection(object):
             )
         response = text[len(prefix):].strip()
         # check for errors started only from new line
-        errors_with_new_line = ["\n " + error for error in error_examples]
+        errors_with_new_line = ["\n" + error for error in error_examples]
         if self.__find_any_in(response, errors_with_new_line) != -1:
             raise cfy_exc.NonRecoverableError(
                 "Looks as we have error in response: %s" % (text)
