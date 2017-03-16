@@ -72,8 +72,10 @@ def run(**kwargs):
                 operation = template_engine.render({})
         if not operation:
             continue
-        ctx.logger.info("Execute: " + operation)
-        result = connection.run(operation, promt_check, error_examples)
+        result = ""
+        for op_line in operation.split("\n"):
+            ctx.logger.info("Execute: " + op_line)
+            result += connection.run(op_line, promt_check, error_examples)
         ctx.logger.info("Result of execution: " + result)
         # save results to runtime properties
         save_to = call.get('save_to')
