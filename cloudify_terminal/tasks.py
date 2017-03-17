@@ -1,5 +1,5 @@
 ########
-# Copyright (c) 2016 GigaSpaces Technologies Ltd. All rights reserved
+# Copyright (c) 2016-2017 GigaSpaces Technologies Ltd. All rights reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,10 +66,11 @@ def run(**kwargs):
                 ctx.logger.info("Empty template.")
                 continue
             template_engine = Template(template)
-            if template_params:
-                operation = template_engine.render(template_params)
-            else:
-                operation = template_engine.render({})
+            if not template_params:
+                template_params = {}
+            # save context for reuse in template
+            template_params['ctx'] = ctx
+            operation = template_engine.render(template_params)
         if not operation:
             continue
         result = ""
