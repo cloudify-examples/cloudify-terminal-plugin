@@ -1,4 +1,4 @@
 config global
-config system interface
+{{ system }}
 end
 end
