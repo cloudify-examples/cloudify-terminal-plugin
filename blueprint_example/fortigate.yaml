@@ -63,4 +63,7 @@ node_templates:
               - template: fortigate.txt
                 params:
                   system: config system interface
+                responses:
+                  - question: Do you want to continue? (y/n)
+                    answer: y
               - action: aaa

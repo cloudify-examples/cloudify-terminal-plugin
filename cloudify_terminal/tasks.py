@@ -55,6 +55,7 @@ def run(**kwargs):
     ctx.logger.info("device prompt: " + prompt)
 
     for call in calls:
+        responses = call.get('responses', [])
         # use action if exist
         operation = call.get('action', "")
         # use template if have
@@ -73,11 +74,16 @@ def run(**kwargs):
             operation = template_engine.render(template_params)
         if not operation:
             continue
+        if responses:
+            ctx.logger.info("We have predefined responses: " + str(responses))
         result = ""
         for op_line in operation.split("\n"):
             ctx.logger.info("Execute: " + op_line)
-            result += connection.run(op_line, promt_check, error_examples)
-        ctx.logger.info("Result of execution: " + result)
+            result_part = connection.run(op_line, promt_check,
+                                         error_examples, responses)
+            if result_part.strip():
+                ctx.logger.info(result_part)
+            result += result_part
         # save results to runtime properties
         save_to = call.get('save_to')
         if save_to:

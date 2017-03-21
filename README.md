@@ -1,5 +1,3 @@
 # cloudify-terminal-plugin
 
-Check ssh connection to IOS
-
-Support run command one by one and save result from executions each command to runtime properties.
+Terminal plugin provide support run command one by one and save result from executions each command to runtime properties.

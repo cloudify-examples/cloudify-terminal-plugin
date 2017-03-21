@@ -35,6 +35,15 @@ class connection(object):
         # no promt codes
         return -1
 
+    def __delete_invible_chars(self, text):
+        # delete all invisible chars
+        text = text.strip()
+        backspace = text.find("\b")
+        while backspace != -1:
+            text = text[:backspace - 1] + text[backspace + 1:]
+            backspace = text.find("\b")
+        return "".join([c for c in text if ord(c) >= 32 or c in "\n\t"])
+
     def connect(self, ip, user, password=None, key_content=None, port=22,
                 prompt_check=None):
         """open connection"""
@@ -61,7 +70,7 @@ class connection(object):
             self.buff += self.conn.recv(128)
 
         self.hostname = ""
-        #looks as we have some hostname
+        # looks as we have some hostname
         code_position = self.__find_any_in(self.buff, prompt_check)
         if code_position != -1:
             self.hostname = self.buff[:code_position].strip()
@@ -72,21 +81,31 @@ class connection(object):
         if not error_examples:
             return
 
-        text = text.strip()
-        if text[:len(prefix)] != prefix:
+        # check command echo
+        text_for_check = self.__delete_invible_chars(text)
+        if text_for_check[:len(prefix)] != prefix:
             raise cfy_exc.NonRecoverableError(
-                "We dont have prefix '%s' in response: %s" % (prefix, text)
+                "No command echo '%s' in response: %s" % (
+                    prefix, text_for_check
+                )
             )
-        response = text[len(prefix):].strip()
+
+        # skip first line(where must be echo from commands input)
+        if "\n" in text:
+            response = text[text.find("\n"):]
+        else:
+            response = text
+
         # check for errors started only from new line
         errors_with_new_line = ["\n" + error for error in error_examples]
         if self.__find_any_in(response, errors_with_new_line) != -1:
             raise cfy_exc.NonRecoverableError(
                 "Looks as we have error in response: %s" % (text)
             )
-        return response
+        return response.strip()
 
-    def run(self, command, prompt_check=None, error_examples=None):
+    def run(self, command, prompt_check=None, error_examples=None,
+            responses=None):
         if not prompt_check:
             prompt_check = DEFAULT_PROMT
 
@@ -112,6 +131,14 @@ class connection(object):
                 line = self.buff[:self.buff.find("\n") + 1]
                 self.buff = self.buff[self.buff.find("\n") + 1:]
                 message_from_server += line
+
+            if responses:
+                for response in responses:
+                    # password check
+                    if self.buff.find(response['question']) != -1:
+                        # password response
+                        self.conn.send(response['answer'])
+                        continue
 
             # last line without new line at the end
             code_position = self.__find_any_in(self.buff, prompt_check)
