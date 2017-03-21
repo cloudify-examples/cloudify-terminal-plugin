@@ -39,9 +39,10 @@ def run(**kwargs):
     user = terminal_auth.get('user')
     password = terminal_auth.get('password')
     key_content = terminal_auth.get('key_content')
-    promt_check = terminal_auth.get('promt_check')
-    error_examples = terminal_auth.get('errors')
+    global_promt_check = terminal_auth.get('promt_check')
+    global_error_examples = terminal_auth.get('errors')
     port = terminal_auth.get('port', 22)
+    exit_command = terminal_auth.get('exit_command', 'exit')
     if not ip or not user or (not password and not key_content):
         raise cfy_exc.NonRecoverableError(
             "please check your credentials"
@@ -50,12 +51,14 @@ def run(**kwargs):
     connection = terminal_connection.connection()
 
     prompt = connection.connect(ip, user, password, key_content, port,
-                                promt_check)
+                                global_promt_check)
 
     ctx.logger.info("device prompt: " + prompt)
 
     for call in calls:
         responses = call.get('responses', [])
+        promt_check = call.get('promt_check', global_promt_check)
+        error_examples = call.get('errors', global_error_examples)
         # use action if exist
         operation = call.get('action', "")
         # use template if have
@@ -89,9 +92,9 @@ def run(**kwargs):
         if save_to:
             ctx.instance.runtime_properties[save_to] = result
 
-    while not connection.is_closed():
+    while not connection.is_closed() and exit_command:
         ctx.logger.info("Execute close")
-        result = connection.run("exit", promt_check, error_examples)
+        result = connection.run(exit_command, promt_check, error_examples)
         ctx.logger.info("Result of close: " + result)
 
     connection.close()
