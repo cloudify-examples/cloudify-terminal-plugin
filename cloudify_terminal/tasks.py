@@ -84,13 +84,11 @@ def run(**kwargs):
             ctx.logger.info("Execute: " + op_line)
             result_part = connection.run(op_line, promt_check,
                                          error_examples, responses)
-            if result_part.strip():
-                ctx.logger.info(result_part)
-            result += result_part
+            result += (result_part + "\n")
         # save results to runtime properties
         save_to = call.get('save_to')
         if save_to:
-            ctx.instance.runtime_properties[save_to] = result
+            ctx.instance.runtime_properties[save_to] = result.strip()
 
     while not connection.is_closed() and exit_command:
         ctx.logger.info("Execute close")

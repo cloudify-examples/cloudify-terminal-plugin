@@ -14,6 +14,7 @@
 import paramiko
 from StringIO import StringIO
 from cloudify import exceptions as cfy_exc
+from cloudify import ctx
 
 DEFAULT_PROMT = ["#", "$"]
 
@@ -77,16 +78,16 @@ class connection(object):
             self.buff = self.buff[code_position + 1:]
         return self.hostname
 
-    def __clenup_response(self, text, prefix, error_examples):
+    def __cleanup_response(self, text, prefix, error_examples):
         if not error_examples:
             return
 
         # check command echo
         text_for_check = self.__delete_invible_chars(text)
         if text_for_check[:len(prefix)] != prefix:
-            raise cfy_exc.NonRecoverableError(
-                "No command echo '%s' in response: %s" % (
-                    prefix, text_for_check
+            ctx.logger.info(
+                "No command echo '%s' in response: '%s' / '%s'" % (
+                    prefix, text_for_check, repr(text)
                 )
             )
 
@@ -123,12 +124,14 @@ class connection(object):
             while self.__find_any_in(self.buff, prompt_check + ["\n"]) == -1:
                 self.buff += self.conn.recv(128)
                 if self.conn.closed:
-                    return self.__clenup_response(message_from_server,
-                                                  response_prefix,
-                                                  error_examples)
+                    return self.__cleanup_response(message_from_server,
+                                                   response_prefix,
+                                                   error_examples)
 
             while self.buff.find("\n") != -1:
                 line = self.buff[:self.buff.find("\n") + 1]
+                if line.strip():
+                    ctx.logger.info(line)
                 self.buff = self.buff[self.buff.find("\n") + 1:]
                 message_from_server += line
 
@@ -148,13 +151,13 @@ class connection(object):
                 self.buff = self.buff[code_position + 1:]
 
             if self.conn.closed:
-                return self.__clenup_response(message_from_server,
-                                              response_prefix,
-                                              error_examples)
+                return self.__cleanup_response(message_from_server,
+                                               response_prefix,
+                                               error_examples)
 
-        return self.__clenup_response(message_from_server,
-                                      response_prefix,
-                                      error_examples)
+        return self.__cleanup_response(message_from_server,
+                                       response_prefix,
+                                       error_examples)
 
     def is_closed(self):
         if self.conn:
