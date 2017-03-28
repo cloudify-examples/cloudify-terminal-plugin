@@ -92,6 +92,7 @@ def run(**kwargs):
         # save results to runtime properties
         save_to = call.get('save_to')
         if save_to:
+            ctx.logger.info("For save: " + result.strip())
             ctx.instance.runtime_properties[save_to] = result.strip()
 
     while not connection.is_closed() and exit_command:
