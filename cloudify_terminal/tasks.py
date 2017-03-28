@@ -75,10 +75,14 @@ def run(**kwargs):
             # save context for reuse in template
             template_params['ctx'] = ctx
             operation = template_engine.render(template_params)
+
         if not operation:
             continue
         if responses:
             ctx.logger.info("We have predefined responses: " + str(responses))
+
+        ctx.logger.info("Template: \n" + str(operation))
+
         result = ""
         for op_line in operation.split("\n"):
             ctx.logger.info("Execute: " + op_line)
