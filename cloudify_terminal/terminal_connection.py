@@ -131,7 +131,7 @@ class connection(object):
             while self.buff.find("\n") != -1:
                 line = self.buff[:self.buff.find("\n") + 1]
                 if line.strip():
-                    ctx.logger.info(line)
+                    ctx.logger.info(str(line).strip())
                 self.buff = self.buff[self.buff.find("\n") + 1:]
                 message_from_server += line
 
