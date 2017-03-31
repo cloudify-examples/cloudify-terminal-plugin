@@ -13,15 +13,24 @@ node_types:
       terminal_auth:
         # login credentials for ios server
         default:
+          # ssh user
           user: ""
+          # optional, ssh password
           password: ""
+          # optional, device ip
           ip: ""
+          # optional, ssh user key
           key_content: ""
+          # optional, ssh port
           port: 22
-          # list of prompts accepted from device
+          # optional, save communication logs
+          store_logs: false
+          # optional, list of prompts accepted from device, by default: #/$
           promt_check: []
-          # list of possible errors without new line
+          # optional, list of possible errors without new line
           errors: []
+          # optional, command for close connection, default 'exit'
+          exit_command: exit
 
     interfaces:
       cloudify.interfaces.lifecycle:

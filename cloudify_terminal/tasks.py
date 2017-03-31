@@ -39,21 +39,33 @@ def run(**kwargs):
     user = terminal_auth.get('user')
     password = terminal_auth.get('password')
     key_content = terminal_auth.get('key_content')
-    global_promt_check = terminal_auth.get('promt_check')
-    global_error_examples = terminal_auth.get('errors')
     port = terminal_auth.get('port', 22)
-    exit_command = terminal_auth.get('exit_command', 'exit')
     if not ip or not user or (not password and not key_content):
         raise cfy_exc.NonRecoverableError(
             "please check your credentials"
         )
 
+    # additional settings
+    global_promt_check = terminal_auth.get('promt_check')
+    global_error_examples = terminal_auth.get('errors')
+    exit_command = terminal_auth.get('exit_command', 'exit')
+    # save logs to debug file
+    log_file_name = None
+    if terminal_auth.get('store_logs'):
+        log_file_name = "/tmp/terminal-%s_%s_%s.log" % (
+            str(ctx.execution_id), str(ctx.instance.id), str(ctx.workflow_id)
+        )
+        ctx.logger.info(
+            "Communication logs will be saved to %s" % log_file_name
+        )
+
     connection = terminal_connection.connection()
 
     prompt = connection.connect(ip, user, password, key_content, port,
-                                global_promt_check)
+                                global_promt_check, logger=ctx.logger,
+                                log_file_name=log_file_name)
 
-    ctx.logger.info("device prompt: " + prompt)
+    ctx.logger.info("Device prompt: " + prompt)
 
     for call in calls:
         responses = call.get('responses', [])
@@ -78,6 +90,7 @@ def run(**kwargs):
 
         if not operation:
             continue
+
         if responses:
             ctx.logger.info("We have predefined responses: " + str(responses))
 
@@ -85,9 +98,17 @@ def run(**kwargs):
 
         result = ""
         for op_line in operation.split("\n"):
+            # skip empty lines
+            if not op_line.strip():
+                continue
+
             ctx.logger.info("Execute: " + op_line)
             result_part = connection.run(op_line, promt_check,
                                          error_examples, responses)
+
+            if result_part.strip():
+                ctx.logger.info(result_part.strip())
+
             result += (result_part + "\n")
         # save results to runtime properties
         save_to = call.get('save_to')

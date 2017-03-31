@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paramiko
+import os
+import time
 from StringIO import StringIO
 from cloudify import exceptions as cfy_exc
-from cloudify import ctx
 
 DEFAULT_PROMT = ["#", "$"]
 
@@ -25,8 +26,52 @@ class connection(object):
     ssh = None
     conn = None
 
+    # global settings
+    logger = None
+    log_file_name = None
+
     # buffer for same packages, will save partial packages between calls
     buff = ""
+
+    def _write_to_log(self, text, output=True):
+        # write to log communication dump
+        if not self.log_file_name:
+            return
+        log_file_name = self.log_file_name + '.out' if output else ".in"
+        try:
+            dir = os.path.dirname(log_file_name)
+            if not os.path.isdir(dir):
+                os.makedirs(dir)
+            with open(log_file_name, 'a+') as file:
+                file.write(text)
+        except Exception as e:
+            if self.logger:
+                self.logger.info(str(e))
+
+    def _conn_send(self, message):
+        curr_pos = 0
+        while curr_pos < len(message):
+            send_size = self.conn.send(message[curr_pos:])
+            if send_size <= 0:
+                send_size = 0
+                if self.logger:
+                    self.logger.info("We have issue with send!")
+                time.sleep(1)
+            # write part that already sent
+            self._write_to_log(message[curr_pos:curr_pos + send_size], False)
+            # save current size of sent block
+            curr_pos += send_size
+            if self.conn.closed:
+                return
+
+    def _conn_recv(self, size):
+        recieved = self.conn.recv(size)
+        self._write_to_log(recieved)
+        if not recieved:
+            if self.logger:
+                self.logger.info("We have issue with receive!")
+            time.sleep(1)
+        return recieved
 
     def __find_any_in(self, buff, promt_check):
         for code in promt_check:
@@ -36,20 +81,22 @@ class connection(object):
         # no promt codes
         return -1
 
-    def __delete_invible_chars(self, text):
+    def __delete_backspace(self, text):
         # delete all invisible chars
-        text = text.strip()
         backspace = text.find("\b")
         while backspace != -1:
             text = text[:backspace - 1] + text[backspace + 1:]
             backspace = text.find("\b")
-        return "".join([c for c in text if ord(c) >= 32 or c in "\n\t"])
+        return text
 
     def connect(self, ip, user, password=None, key_content=None, port=22,
-                prompt_check=None):
+                prompt_check=None, logger=None, log_file_name=None):
         """open connection"""
         if not prompt_check:
             prompt_check = DEFAULT_PROMT
+
+        self.logger = logger
+        self.log_file_name = log_file_name
 
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -68,7 +115,8 @@ class connection(object):
         self.buff = ""
 
         while self.__find_any_in(self.buff, prompt_check) == -1:
-            self.buff += self.conn.recv(128)
+            self.buff += self._conn_recv(256)
+            self.buff = self.__delete_backspace(self.buff)
 
         self.hostname = ""
         # looks as we have some hostname
@@ -83,27 +131,55 @@ class connection(object):
             return
 
         # check command echo
-        text_for_check = self.__delete_invible_chars(text)
-        if text_for_check[:len(prefix)] != prefix:
-            ctx.logger.info(
-                "No command echo '%s' in response: '%s' / '%s'" % (
-                    prefix, text_for_check, repr(text)
+        have_correct_prefix = False
+        prefix_pos = text.find(prefix)
+        if prefix_pos == -1:
+            if self.logger:
+                self.logger.info(
+                    "Have not found '%s' in response: '%s'" % (
+                        prefix, repr(text)
+                    )
                 )
-            )
-
-        # skip first line(where must be echo from commands input)
-        if "\n" in text:
-            response = text[text.find("\n"):]
         else:
-            response = text
+            if text[:prefix_pos].strip():
+                if self.logger:
+                    self.logger.info(
+                        "Some mess before '%s' in response: '%s'" % (
+                            prefix, repr(text)
+                        )
+                    )
+            else:
+                have_correct_prefix = True
+
+        if have_correct_prefix:
+                # looks as we have correct line
+                response = text[prefix_pos + len(prefix):]
+        else:
+            # skip first line(where must be echo from commands input)
+            if "\n" in text:
+                response = text[text.find("\n"):]
+            else:
+                response = text
 
         # check for errors started only from new line
         errors_with_new_line = ["\n" + error for error in error_examples]
         if self.__find_any_in(response, errors_with_new_line) != -1:
-            raise cfy_exc.NonRecoverableError(
+            raise cfy_exc.RecoverableError(
                 "Looks as we have error in response: %s" % (text)
             )
         return response.strip()
+
+    def _send_response(self, line, responses):
+        # return position next to question
+        if responses:
+            for response in responses:
+                # question check
+                question_pos = line.find(response['question'])
+                if question_pos != -1:
+                    # response to question
+                    self._conn_send(response['answer'])
+                    return question_pos + len(response['question'])
+        return -1
 
     def run(self, command, prompt_check=None, error_examples=None,
             responses=None):
@@ -111,7 +187,7 @@ class connection(object):
             prompt_check = DEFAULT_PROMT
 
         response_prefix = command.strip()
-        self.conn.send(response_prefix + "\n")
+        self._conn_send(response_prefix + "\n")
 
         if self.conn.closed:
             return ""
@@ -122,26 +198,36 @@ class connection(object):
 
         while not have_prompt:
             while self.__find_any_in(self.buff, prompt_check + ["\n"]) == -1:
-                self.buff += self.conn.recv(128)
+                self.buff += self._conn_recv(1024)
+                self.buff = self.__delete_backspace(self.buff)
+                # check for close, and only after that for responses
                 if self.conn.closed:
+                    message_from_server += self.buff
                     return self.__cleanup_response(message_from_server,
                                                    response_prefix,
                                                    error_examples)
+                # if we have something like question
+                # we can skip check for promt or new line
+                if responses:
+                    search_list = [res['question'] for res in responses]
+                    if self.__find_any_in(self.buff, search_list) != -1:
+                        break
 
+            # separate finished lines from raw block
             while self.buff.find("\n") != -1:
                 line = self.buff[:self.buff.find("\n") + 1]
-                if line.strip():
-                    ctx.logger.info(str(line).strip())
-                self.buff = self.buff[self.buff.find("\n") + 1:]
+                self.buff = self.buff[len(line):]
                 message_from_server += line
+                # we have in current line question?
+                self._send_response(line, responses)
 
-            if responses:
-                for response in responses:
-                    # password check
-                    if self.buff.find(response['question']) != -1:
-                        # password response
-                        self.conn.send(response['answer'])
-                        continue
+            # we have in buff question?
+            question_mark = self._send_response(self.buff, responses)
+            if question_mark != -1:
+                line = self.buff[:question_mark]
+                self.buff = self.buff[question_mark:]
+                message_from_server += line
+                continue
 
             # last line without new line at the end
             code_position = self.__find_any_in(self.buff, prompt_check)
