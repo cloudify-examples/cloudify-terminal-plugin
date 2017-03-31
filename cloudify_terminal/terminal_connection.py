@@ -37,7 +37,7 @@ class connection(object):
         # write to log communication dump
         if not self.log_file_name:
             return
-        log_file_name = self.log_file_name + '.out' if output else ".in"
+        log_file_name = self.log_file_name + ('.out' if output else ".in")
         try:
             dir = os.path.dirname(log_file_name)
             if not os.path.isdir(dir):
