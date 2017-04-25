@@ -30,6 +30,7 @@ and that reuse such node in other part of your blueprint. For implicit reuse ip 
               key_content: <optional, ssh key content for instance>
               port: <optional, by default 22>
               errors: <list strings that must raise error if contained in output>
+              store_logs: <True |deafult:False store logs in separete file> 
             calls:
               - action: <command for run>
                 save_to: <field name for save to runtime properties, optional>
